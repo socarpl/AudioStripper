@@ -1,0 +1,22 @@
+FFmpeg - third-party executable
+
+Project: https://ffmpeg.org/
+Binary provider: https://github.com/BtbN/FFmpeg-Builds
+Pinned release: autobuild-2026-09-30-13-08
+Archive: ffmpeg-n9.0.2-17-g2a571b6068-win64-lgpl-9.0.zip
+Archive SHA-256: 6b264b9e6019103f601d98c292bd332fd87acf1c5e941ddff4fb71760fe63432
+FFmpeg revision: 2a571b6068
+License reported by this build: GNU Lesser General Public License version 3 or later.
+See FFmpeg-LICENSE.txt and FFmpeg-COPYING.GPLv3.txt.
+
+Upstream FFmpeg source: https://github.com/FFmpeg/FFmpeg/tree/2a571b6068
+Build scripts and dependency recipes:
+https://github.com/BtbN/FFmpeg-Builds/tree/autobuild-2026-09-30-13-08
+
+These upstream references are provenance information. If redistributing this
+executable, also meet the applicable corresponding-source obligations for the
+exact FFmpeg build and its included dependencies. These links and this notice
+alone are not a substitute for those obligations.
+
+This executable is downloaded only if the build output does not already contain
+ffmpeg.exe. An executable supplied separately may have different licensing.
