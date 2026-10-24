@@ -1,0 +1,60 @@
+name: Build AudioStripper
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install .NET 9 SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore FFmpeg download cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: obj/ffmpeg
+          key: ffmpeg-windows-x64-${{ hashFiles('build/Ensure-Ffmpeg.ps1') }}
+
+      - name: Restore dependencies
+        run: dotnet restore AudioStripper.csproj --runtime win-x64
+
+      - name: Publish standalone application
+        run: dotnet publish AudioStripper.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore --output artifacts/AudioStripper-win-x64
+
+      - name: Verify package and MP3 conversion
+        run: ./build/Test-Package.ps1 -OutputDirectory ./artifacts/AudioStripper-win-x64
+
+      - name: Upload application
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: AudioStripper-win-x64-${{ github.run_number }}
+          path: artifacts/AudioStripper-win-x64/
+          if-no-files-found: error
+          retention-days: 14
+
