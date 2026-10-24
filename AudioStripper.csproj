@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>audiostripper.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="audiostripper.ico" LogicalName="AudioStripper.audiostripper.ico" />
+  </ItemGroup>
+
+  <Target Name="CopyDefaultConfig" AfterTargets="Build"
+          Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(MSBuildProjectDirectory)\config.json') and !Exists('$(TargetDir)config.json')">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\config.json"
+          DestinationFiles="$(TargetDir)config.json" />
+  </Target>
+
+  <Target Name="EnsureFfmpeg" AfterTargets="Build"
+          Condition="'$(DesignTimeBuild)' != 'true' and !Exists('$(TargetDir)ffmpeg.exe')">
+    <PropertyGroup>
+      <FfmpegCacheDirectory>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)', 'ffmpeg'))</FfmpegCacheDirectory>
+    </PropertyGroup>
+    <Exec Command="powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\build\Ensure-Ffmpeg.ps1&quot; -OutputDirectory &quot;$(TargetDir).&quot; -CacheDirectory &quot;$(FfmpegCacheDirectory)&quot;" />
+  </Target>
+
+  <Target Name="PreparePublishDependencies" AfterTargets="Publish"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\config.json"
+          DestinationFiles="$(PublishDir)config.json"
+          Condition="Exists('$(MSBuildProjectDirectory)\config.json') and !Exists('$(PublishDir)config.json')" />
+    <PropertyGroup>
+      <FfmpegCacheDirectory>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)', 'ffmpeg'))</FfmpegCacheDirectory>
+    </PropertyGroup>
+    <Exec Command="powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\build\Ensure-Ffmpeg.ps1&quot; -OutputDirectory &quot;$(PublishDir).&quot; -CacheDirectory &quot;$(FfmpegCacheDirectory)&quot;"
+          Condition="!Exists('$(PublishDir)ffmpeg.exe')" />
+  </Target>
+
+</Project>

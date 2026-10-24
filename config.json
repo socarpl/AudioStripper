@@ -1,0 +1,4 @@
+{
+  "FfmpegLocation": ".\\ffmpeg.exe",
+  "FfmpegParameters": "-i \u0022{i}\u0022 -vn -c:a libmp3lame -q:a 2 \u0022{o:a}\u0022"
+}
