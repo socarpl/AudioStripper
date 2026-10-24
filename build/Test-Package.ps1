@@ -18,8 +18,17 @@ if ([string]::IsNullOrWhiteSpace($config.FfmpegLocation) -or [string]::IsNullOrW
     throw 'The packaged default config is missing FFmpeg settings.'
 }
 $runtimeConfig = Get-Content -LiteralPath (Join-Path $outputPath 'AudioStripper.runtimeconfig.json') -Raw | ConvertFrom-Json
-if (!$runtimeConfig.runtimeOptions.includedFrameworks) {
-    throw 'The published package must include the .NET runtime (self-contained publish).'
+if ($runtimeConfig.runtimeOptions.includedFrameworks) {
+    throw 'The published package must use the installed .NET runtime (--self-contained false).'
+}
+$frameworks = @($runtimeConfig.runtimeOptions.frameworks) + @($runtimeConfig.runtimeOptions.framework)
+if (!($frameworks | Where-Object { $_.name -eq 'Microsoft.WindowsDesktop.App' -and $_.version -like '9.*' })) {
+    throw 'The package must reference the .NET 9 Windows Desktop Runtime.'
+}
+foreach ($runtimeFile in @('coreclr.dll', 'hostfxr.dll', 'hostpolicy.dll', 'System.Private.CoreLib.dll')) {
+    if (Test-Path -LiteralPath (Join-Path $outputPath $runtimeFile)) {
+        throw "The package contains a bundled runtime file '$runtimeFile'. Publish into a fresh output folder."
+    }
 }
 
 # Test real encoding in a temporary folder, keeping fixtures out of the artifact.

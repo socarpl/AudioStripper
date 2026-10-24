@@ -25,26 +25,50 @@ the provenance links in `FFmpeg-NOTICE.txt` alone do not satisfy that requiremen
 `.github/workflows/build.yml` builds on every push and pull request. It can also
 be started manually from the repository's Actions tab. It uses a Windows runner
 and the .NET 9 SDK, caches the verified FFmpeg download, and publishes a Release
-Windows x64 package with the .NET runtime included.
+Windows x64 package using the installed .NET 9 Windows Desktop Runtime (x64).
+The .NET runtime libraries are excluded; FFmpeg remains included.
 
 The job checks required package files and performs a real video-to-MP3 encoding
 before uploading an artifact. In GitHub, open **Actions > Build AudioStripper >
 the successful run > Artifacts** and download `AudioStripper-win-x64-<run number>`.
-Extract the entire download and run `AudioStripper.exe`; a separate .NET runtime
-installation is not required. Artifacts are retained for 14 days.
+The artifact contains `AudioStripper-win-x64.zip`. Extract the application ZIP
+and run `AudioStripper.exe` on a machine with the .NET 9 Windows Desktop Runtime
+(x64). Artifacts are retained for 14 days.
 
 To reproduce the packaging steps locally:
 
 ```powershell
 dotnet restore AudioStripper.csproj --runtime win-x64
-dotnet publish AudioStripper.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore --output artifacts/AudioStripper-win-x64
-./build/Test-Package.ps1 -OutputDirectory ./artifacts/AudioStripper-win-x64
+dotnet publish AudioStripper.csproj --configuration Release --runtime win-x64 --self-contained false --no-restore --output artifacts/AudioStripper-win-x64-framework-dependent
+./build/Test-Package.ps1 -OutputDirectory ./artifacts/AudioStripper-win-x64-framework-dependent
+Compress-Archive -Path ./artifacts/AudioStripper-win-x64-framework-dependent/* -DestinationPath ./artifacts/AudioStripper-win-x64.zip -CompressionLevel Optimal
 ```
 
 Build and publish both provision missing FFmpeg/config files. Existing files are
-preserved. Actions only uploads a build artifact; it does not create a GitHub
-Release. Commit the workflow, project, `build` scripts/notices, icon, sources, and
-default `config.json` to the repository. No repository secrets are required.
+preserved. Use a fresh publish folder when switching from self-contained output
+so old runtime DLLs cannot remain in the package. Commit the workflow, project,
+`build` scripts/notices, icon, sources, and default `config.json` to the repository.
+No custom repository secrets are required.
+
+## Publish a GitHub Release
+
+After committing and pushing the updated workflow and sources, push a version tag:
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Tags beginning with `v` trigger a release job after the build and package checks
+succeed. That job downloads the tested ZIP, creates a GitHub Release for the
+existing tag, and attaches `AudioStripper-win-x64.zip` under Assets. A rerun
+updates the ZIP for that same release. Ordinary branch pushes, pull requests,
+and manual workflow runs produce Actions artifacts without creating releases.
+Only the release job receives `contents: write`; the build job stays read-only.
+
+Use the repository's **Releases** link to download published versions. GitHub
+Packages is not used for these desktop ZIP downloads. Releases and their assets
+are separate from the 14-day Actions artifact retention.
 
 If CI reports that `build/Ensure-Ffmpeg.ps1` does not exist, the build-support
 files are missing from the GitHub checkout. Check the files committed to the
