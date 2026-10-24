@@ -8,6 +8,28 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+
+function Get-Sha256 {
+    param([Parameter(Mandatory = $true)][string] $Path)
+
+    # Use .NET directly: Windows PowerShell launched by MSBuild may not be able
+    # to discover Microsoft.PowerShell.Utility through an inherited module path.
+    $algorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [System.IO.File]::OpenRead($Path)
+        try {
+            $hash = $algorithm.ComputeHash($stream)
+            return [System.BitConverter]::ToString($hash).Replace('-', '').ToLowerInvariant()
+        }
+        finally {
+            $stream.Dispose()
+        }
+    }
+    finally {
+        $algorithm.Dispose()
+    }
+}
+
 $outputPath = [System.IO.Path]::GetFullPath($OutputDirectory)
 $executablePath = Join-Path $outputPath 'ffmpeg.exe'
 
@@ -33,7 +55,7 @@ if (!(Test-Path -LiteralPath $archivePath -PathType Leaf)) {
         Write-Output "Downloading pinned FFmpeg Windows x64 build ($release)..."
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath -UseBasicParsing -TimeoutSec 600
-        if ((Get-FileHash -LiteralPath $downloadPath -Algorithm SHA256).Hash -ne $expectedHash) {
+        if ((Get-Sha256 -Path $downloadPath) -ne $expectedHash) {
             throw 'Downloaded FFmpeg archive failed SHA-256 verification.'
         }
         Move-Item -LiteralPath $downloadPath -Destination $archivePath -Force
@@ -45,7 +67,7 @@ if (!(Test-Path -LiteralPath $archivePath -PathType Leaf)) {
     }
 }
 
-if ((Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash -ne $expectedHash) {
+if ((Get-Sha256 -Path $archivePath) -ne $expectedHash) {
     throw "Cached FFmpeg archive failed SHA-256 verification. Remove '$archivePath' and rebuild."
 }
 
