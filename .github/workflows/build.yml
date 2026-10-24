@@ -2,6 +2,8 @@ name: Build AudioStripper
 
 on:
   push:
+    branches: ['**']
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -59,17 +61,58 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore AudioStripper.csproj --runtime win-x64
 
-      - name: Publish standalone application
-        run: dotnet publish AudioStripper.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore --output artifacts/AudioStripper-win-x64
+      - name: Publish application using installed .NET
+        run: dotnet publish AudioStripper.csproj --configuration Release --runtime win-x64 --self-contained false --no-restore --output artifacts/AudioStripper-win-x64-framework-dependent
 
       - name: Verify package and MP3 conversion
-        run: ./build/Test-Package.ps1 -OutputDirectory ./artifacts/AudioStripper-win-x64
+        run: ./build/Test-Package.ps1 -OutputDirectory ./artifacts/AudioStripper-win-x64-framework-dependent
+
+      - name: Create download ZIP
+        run: Compress-Archive -Path ./artifacts/AudioStripper-win-x64-framework-dependent/* -DestinationPath ./artifacts/AudioStripper-win-x64.zip -CompressionLevel Optimal
 
       - name: Upload application
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: AudioStripper-win-x64-${{ github.run_number }}
-          path: artifacts/AudioStripper-win-x64/
+          path: artifacts/AudioStripper-win-x64.zip
+          compression-level: 0
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    needs: windows
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-2022
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Download tested ZIP
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: AudioStripper-win-x64-${{ github.run_number }}
+          path: release
+
+      - name: Create release and attach ZIP
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $asset = './release/AudioStripper-win-x64.zip'
+          if (!(Test-Path -LiteralPath $asset -PathType Leaf)) {
+            throw 'The tested release ZIP is missing.'
+          }
+          gh release view "$env:RELEASE_TAG" --json tagName 1>$null 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload "$env:RELEASE_TAG" $asset --clobber
+          } else {
+            gh release create "$env:RELEASE_TAG" $asset --verify-tag --title "AudioStripper $env:RELEASE_TAG" --generate-notes --notes 'Requires the .NET 9 Windows Desktop Runtime (x64). Extract the entire ZIP and run AudioStripper.exe. FFmpeg is included; the .NET runtime is not bundled.'
+          }
+          if ($LASTEXITCODE -ne 0) {
+            throw 'GitHub Release creation or asset upload failed.'
+          }
 

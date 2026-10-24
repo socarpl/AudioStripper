@@ -18,13 +18,18 @@ the source video.
 
 ## Get the app
 
-In the GitHub repository, open **Actions > Build AudioStripper**, select a
-successful run, and download `AudioStripper-win-x64-<run number>` from **Artifacts**.
-Extract the entire archive and run `AudioStripper.exe`.
+In the GitHub repository, open **Releases**, select a version, and download
+`AudioStripper-win-x64.zip` under **Assets**. Extract the entire archive and run
+`AudioStripper.exe`.
 
-The GitHub Actions package targets Windows x64 and includes the .NET runtime,
-FFmpeg, the default config, and FFmpeg license notices. Keep these files together.
+The package targets Windows x64 and requires the **.NET 9 Windows Desktop Runtime
+(x64)** to be installed. It includes FFmpeg, the default config, and FFmpeg
+license notices, without bundling .NET libraries. Keep these files together.
 Use a folder where you can save settings and write output files.
+
+Development builds are also available under **Actions > Build AudioStripper >
+successful run > Artifacts**, retained for 14 days. The downloaded artifact
+contains the application ZIP.
 
 ## Convert a video to MP3
 
@@ -137,16 +142,27 @@ The first build downloads a pinned Windows x64 FFmpeg build from BtbN if
 and cached under `obj/ffmpeg`. Existing output executables are preserved. The
 project's default `config.json` is copied only when the output has no config.
 
-For a standalone package with the .NET runtime included:
+For a smaller package using the installed .NET runtime, publish into a fresh
+output folder:
 
 ```powershell
-dotnet publish AudioStripper.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/AudioStripper-win-x64
-./build/Test-Package.ps1 -OutputDirectory ./artifacts/AudioStripper-win-x64
+dotnet publish AudioStripper.csproj --configuration Release --runtime win-x64 --self-contained false --output artifacts/AudioStripper-win-x64-framework-dependent
+./build/Test-Package.ps1 -OutputDirectory ./artifacts/AudioStripper-win-x64-framework-dependent
 ```
 
 GitHub Actions performs this packaging and conversion check on pushes and pull
-requests. See [build instructions](build/README.md) for caching, workflow, and
-dependency maintenance details.
+requests. To publish a version under **Releases**, commit and push your changes,
+then push a version tag:
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Use a new version tag for each release. The tagged commit must contain the
+updated workflow. After its build passes, the workflow creates the release and
+attaches `AudioStripper-win-x64.zip`. See [build instructions](build/README.md)
+for workflow and dependency maintenance details.
 
 ## Troubleshooting
 
