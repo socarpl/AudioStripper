@@ -5,3 +5,8 @@ artifacts/
 *.csproj.user
 *.suo
 
+# These are source-controlled build scripts, not generated build output.
+# Override broader Build/build ignore patterns inherited from other rules.
+!/build/
+!/build/**
+

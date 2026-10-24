@@ -30,6 +30,21 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Check required repository files
+        run: |
+          $requiredFiles = @(
+            'build/Ensure-Ffmpeg.ps1',
+            'build/Test-Package.ps1',
+            'build/FFmpeg-COPYING.GPLv3.txt',
+            'build/FFmpeg-NOTICE.txt',
+            'config.json',
+            'audiostripper.ico'
+          )
+          $missingFiles = @($requiredFiles | Where-Object { !(Test-Path -LiteralPath $_ -PathType Leaf) })
+          if ($missingFiles.Count -gt 0) {
+            throw "Required files are missing from the checkout: $($missingFiles -join ', '). Commit and push the entire build directory, config.json, and icon. Use 'git add -f build/' if build scripts were ignored."
+          }
+
       - name: Install .NET 9 SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
